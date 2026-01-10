@@ -3,8 +3,9 @@ import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { colors } from "../theme";
 import { customers, serviceRecords, vehicles } from "../data/mockData";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput } from "react-native";
+import { ServicesApi } from "../src/services.api";
 
 type StatusFilter = "all" | "completed" | "in_progress" | "waiting_parts";
 
@@ -48,13 +49,21 @@ export default function ServicesScreen() {
     });
   };
 
+  const [services, setServices] = useState<any[]>([]);
+
+  useEffect(() => {
+    ServicesApi.getAll()
+      .then(setServices)
+      .catch(err => console.error(err));
+  }, []);
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}
     >
       <View>
-        <Text
+        {/* <Text
           style={{
             fontSize: 22,
             fontWeight: "700",
@@ -71,7 +80,12 @@ export default function ServicesScreen() {
           }}
         >
           Intake, track, and export detailed visit records.
+        </Text> */}
+        {services.map(service => (
+        <Text key={service.id}>
+          {service.name} - {service.price}
         </Text>
+      ))}
       </View>
 
       <Card style={{ padding: 14, gap: 10 }}>
