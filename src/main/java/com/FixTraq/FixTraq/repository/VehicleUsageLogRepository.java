@@ -1,6 +1,6 @@
-package com.FixTraq.FixTraq.repository;
+// package com.FixTraq.FixTraq.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+// import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface VehicleUsageLogRepository extends JpaRepository<VehicleUsageLog, Long> {
-}
+// public interface VehicleUsageLogRepository extends JpaRepository<VehicleUsageLog, Long> {
+// }

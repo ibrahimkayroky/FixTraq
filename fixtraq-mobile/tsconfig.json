@@ -1,23 +1,20 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "jsx": "react-jsx",
     "strict": true,
-    "moduleResolution": "node",
+    "noEmit": true,
     "allowJs": false,
     "resolveJsonModule": true,
-    "noEmit": true,
     "types": [
       "nativewind/types"
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
       ]
     }
   },
-  "extends": "expo/tsconfig.base",
   "include": [
     "**/*.ts",
     "**/*.tsx"
