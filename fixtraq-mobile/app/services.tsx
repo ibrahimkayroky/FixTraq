@@ -2,7 +2,7 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { colors } from "../theme";
-import { customers, serviceRecords, thresholds, vehicles } from "../data/mockData";
+import { customers, serviceRecords, vehicles } from "../data/mockData";
 import { useState } from "react";
 import { View, Text, ScrollView, TextInput } from "react-native";
 
@@ -91,9 +91,9 @@ export default function ServicesScreen() {
           >
             Add new service
           </Text>
-          <Badge tone={totalCost >= thresholds.highCost ? "warning" : "info"}>
+          {/* <Badge tone={totalCost >= thresholds.highCost ? "warning" : "info"}>
             Total: {formatCurrency(totalCost)}
-          </Badge>
+          </Badge> */}
         </View>
 
         <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
@@ -219,7 +219,7 @@ export default function ServicesScreen() {
         <View style={{ marginTop: 8 }}>
           {filtered.map((record) => {
             const total = record.laborCost + record.partsCost;
-            const high = total >= thresholds.highCost;
+            // const high = total >= thresholds.highCost;
             const tone =
               record.status === "completed"
                 ? "success"
@@ -283,7 +283,7 @@ export default function ServicesScreen() {
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: high ? "#B45309" : colors.foreground,
+                    // color: high ? "#B45309" : colors.foreground,
                   }}
                 >
                   {formatCurrency(total)}

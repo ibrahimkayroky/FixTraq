@@ -1,12 +1,15 @@
-import { Slot, Tabs } from "expo-router";
+import { Tabs } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { View, Text } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { DashboardIcon, UsersIcon, CarIcon, WrenchIcon } from "../components/icons";
+import {
+  DashboardIcon,
+  UsersIcon,
+  CarIcon,
+  WrenchIcon,
+} from "../components/icons";
 
-export default function RootLayout() {
+export default function TabsLayout() {
   return (
-    <SafeAreaProvider>
+    <>
       <StatusBar style="dark" />
       <Tabs
         screenOptions={{
@@ -52,9 +55,6 @@ export default function RootLayout() {
           }}
         />
       </Tabs>
-      <Slot />
-    </SafeAreaProvider>
+    </>
   );
 }
-
-
