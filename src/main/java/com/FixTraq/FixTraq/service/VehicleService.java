@@ -14,7 +14,7 @@ public class VehicleService {
     private final VehicleRepository vehicleRepository;
 
     public Vehicle addVehicle(Vehicle vehicle) {
-        if (vehicleRepository.existsPlateNumber(vehicle.getPlateNumber())){
+        if (vehicleRepository.existsByPlateNumber(vehicle.getPlateNumber())){
             throw new RuntimeException("Vehicle already exists!");
         }
         return vehicleRepository.save(vehicle);
