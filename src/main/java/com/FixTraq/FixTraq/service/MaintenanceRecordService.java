@@ -19,17 +19,17 @@ public class MaintenanceRecordService {
 
     public MaintenanceRecord addRecord(MaintenanceRecordDTO maintenanceRecordDTO)
     {
-        Vehicle vehicle = vehicleRepository.findById(maintenanceRecordDTO.getVehicleId())
+        Vehicle vehicle = vehicleRepository.findById(maintenanceRecordDTO.vehicleId())
                 .orElseThrow(() -> new RuntimeException("Vehicle not found"));
 
         MaintenanceRecord maintenanceRecord = MaintenanceRecord.builder()
                 .vehicle(vehicle)
-                .maintenanceType(maintenanceRecordDTO.getMaintenanceType())
-                .description(maintenanceRecordDTO.getDescription())
-                .maintenanceDate(maintenanceRecordDTO.getMaintenanceDate())
-                .mileageAtService(maintenanceRecordDTO.getMileageAtService())
-                .cost(maintenanceRecordDTO.getCost())
-                .nextScheduledDate(maintenanceRecordDTO.getNextScheduledDate())
+                .maintenanceType(maintenanceRecordDTO.maintenanceType())
+                .description(maintenanceRecordDTO.description())
+                .maintenanceDate(maintenanceRecordDTO.maintenanceDate())
+                .mileageAtService(maintenanceRecordDTO.mileageAtService())
+                .cost(maintenanceRecordDTO.cost())
+                .nextScheduledDate(maintenanceRecordDTO.nextScheduledDate())
                 .build();
 
         return maintenanceRecordRepository.save(maintenanceRecord);
