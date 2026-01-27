@@ -2,18 +2,48 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { colors } from "../theme";
-import { customers, serviceRecords, vehicles } from "../data/mockData";
+// import { customers, serviceRecords } from "../data/mockData";
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TextInput } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert } from "react-native";
 import { ServicesApi } from "../src/services.api";
+import { VehiclesApi } from "../src/vehicles.api";
 
-type StatusFilter = "all" | "completed" | "in_progress" | "waiting_parts";
+type MaintenanceFilter = "all" | "SCHEDULED" | "REPAIR" | "EMERGENCY";
+
+type ServiceRecord = {
+  id: number;
+  vehicleId: number | null;
+  vehiclePlate: string;
+  vehicleModel: string;
+  customerName: string;
+  maintenanceType: "SCHEDULED" | "REPAIR" | "EMERGENCY";
+  description: string;
+  maintenanceDate: string;
+  mileageAtService: number;
+  cost: number;
+  nextScheduledDate: string | null;
+};
+
+type SimpleVehicle = {
+  id: number;
+  plateNumber: string;
+  model: string;
+};
 
 export default function ServicesScreen() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
+  const [status, setStatus] = useState<MaintenanceFilter>("all");
 
-  const [vehicleId, setVehicleId] = useState(vehicles[0]?.id ?? "");
+  const [vehicles, setVehicles] = useState<SimpleVehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
+  const [maintenanceType, setMaintenanceType] =
+    useState<"SCHEDULED" | "REPAIR" | "EMERGENCY">("SCHEDULED");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [maintenanceDate, setMaintenanceDate] = useState(today);
+  const [nextScheduledDate, setNextScheduledDate] = useState(today);
+  const [mileageAtService, setMileageAtService] = useState("0");
+
   const [description, setDescription] = useState("");
   const [laborCost, setLaborCost] = useState("0");
   const [partsCost, setPartsCost] = useState("0");
@@ -22,7 +52,11 @@ export default function ServicesScreen() {
   const parsedParts = Number(partsCost) || 0;
   const totalCost = parsedLabor + parsedParts;
 
-  const filtered = serviceRecords.filter((record) => {
+  const [services, setServices] = useState<ServiceRecord[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const filtered = services.filter((record) => {
     const text = [
       record.vehiclePlate,
       record.vehicleModel,
@@ -32,31 +66,143 @@ export default function ServicesScreen() {
       .join(" ")
       .toLowerCase();
     const matchesText = text.includes(search.toLowerCase());
-    const matchesStatus = status === "all" ? true : record.status === status;
+    const matchesStatus =
+      status === "all" ? true : record.maintenanceType === status;
     return matchesText && matchesStatus;
   });
 
   const formatCurrency = (value: number) =>
     `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
-  const handleSaveMock = () => {
-    // UI only – connect to backend API for real behavior
-    console.log("Save mock record", {
-      vehicleId,
-      description,
-      laborCost: parsedLabor,
-      partsCost: parsedParts,
-    });
+  const handleSave = async () => {
+    if (!vehicleId) {
+      setError("Please select a vehicle.");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Description is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const payload = {
+        vehicleId,
+        maintenanceType,
+        description,
+        maintenanceDate,
+        mileageAtService: Number(mileageAtService) || 0,
+        cost: totalCost,
+        nextScheduledDate,
+      };
+
+      await ServicesApi.create(payload);
+      Alert.alert("Success", "Service record created successfully.");
+
+      // Reset form
+      setDescription("");
+      setLaborCost("0");
+      setPartsCost("0");
+      setMileageAtService("0");
+      setMaintenanceDate(today);
+      setNextScheduledDate(today);
+      setMaintenanceType("SCHEDULED");
+
+      // Refresh list
+      const data = await ServicesApi.getAll();
+      const list = Array.isArray(data) ? data : [];
+      const normalized: ServiceRecord[] = list.map(
+        (s: any): ServiceRecord => ({
+          id: s.id,
+          vehicleId: s.vehicle?.id ?? null,
+          vehiclePlate: s.vehicle?.plateNumber ?? "",
+          vehicleModel: s.vehicle?.model ?? "",
+          customerName: s.vehicle?.user?.name ?? "",
+          maintenanceType: s.maintenanceType,
+          description: s.description,
+          maintenanceDate: s.maintenanceDate,
+          mileageAtService: s.mileageAtService,
+          cost: s.cost,
+          nextScheduledDate: s.nextScheduledDate ?? null,
+        }),
+      );
+      setServices(normalized);
+    } catch (err) {
+      console.error("CREATE MAINTENANCE ERROR:", err);
+      setError("Failed to create service record. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const [services, setServices] = useState<any[]>([]);
 
+  // useEffect(() => {
+  //   ServicesApi.getAll()
+  //     .then(setServices)
+  //     .catch(err => console.error(err));
+  // }, []);
+
+  // useEffect(() => {
+  //   ServicesApi.getAll()
+  //     .then(data => {
+  //       console.log("SERVICES:", data);
+  //       setServices(data);
+  //     })
+  //     .catch(err => console.error("API ERROR:", err));
+  // }, []);
+  
   useEffect(() => {
-    ServicesApi.getAll()
-      .then(setServices)
-      .catch(err => console.error(err));
-  }, []);
+    const load = async () => {
+      try {
+        const data = await ServicesApi.getAll();
+        const list = Array.isArray(data) ? data : [];
 
+        const normalized: ServiceRecord[] = list.map(
+          (s: any): ServiceRecord => ({
+            id: s.id,
+            vehicleId: s.vehicle?.id ?? null,
+            vehiclePlate: s.vehicle?.plateNumber ?? "",
+            vehicleModel: s.vehicle?.model ?? "",
+            customerName: s.vehicle?.user?.name ?? "",
+            maintenanceType: s.maintenanceType,
+            description: s.description,
+            maintenanceDate: s.maintenanceDate,
+            mileageAtService: s.mileageAtService,
+            cost: s.cost,
+            nextScheduledDate: s.nextScheduledDate ?? null,
+          }),
+        );
+
+        setServices(normalized);
+      } catch (err) {
+        console.error("API ERROR (maintenance):", err);
+      }
+
+      try {
+        const vehiclesData = await VehiclesApi.getAll();
+        const vehiclesList = Array.isArray(vehiclesData) ? vehiclesData : [];
+        const normalizedVehicles: SimpleVehicle[] = vehiclesList.map(
+          (v: any): SimpleVehicle => ({
+            id: v.id,
+            plateNumber: v.plateNumber,
+            model: v.model,
+          }),
+        );
+        setVehicles(normalizedVehicles);
+        if (normalizedVehicles.length > 0 && vehicleId === null) {
+          setVehicleId(normalizedVehicles[0].id);
+        }
+      } catch (err) {
+        console.error("API ERROR (vehicles):", err);
+      }
+    };
+
+    load();
+  }, []);
+  
+  console.log("SERVICES:", services);
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -81,11 +227,11 @@ export default function ServicesScreen() {
         >
           Intake, track, and export detailed visit records.
         </Text> */}
-        {services.map(service => (
+        {/* {services.map(service => (
         <Text key={service.id}>
-          {service.name} - {service.price}
+          {service.vehiclePlate} - {service.status}
         </Text>
-      ))}
+      ))} */}
       </View>
 
       <Card style={{ padding: 14, gap: 10 }}>
@@ -105,9 +251,7 @@ export default function ServicesScreen() {
           >
             Add new service
           </Text>
-          {/* <Badge tone={totalCost >= thresholds.highCost ? "warning" : "info"}>
-            Total: {formatCurrency(totalCost)}
-          </Badge> */}
+          <Badge tone="info">Total: {formatCurrency(totalCost)}</Badge>
         </View>
 
         <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
@@ -122,7 +266,7 @@ export default function ServicesScreen() {
                 size="sm"
                 onPress={() => setVehicleId(vehicle.id)}
               >
-                {vehicle.plate}
+                {vehicle.plateNumber} • {vehicle.model}
               </Button>
             ))}
           </View>
@@ -165,6 +309,65 @@ export default function ServicesScreen() {
           </View>
         </View>
 
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
+              Maintenance date (YYYY-MM-DD)
+            </Text>
+            <TextInput
+              value={maintenanceDate}
+              onChangeText={setMaintenanceDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9CA3AF"
+              style={{
+                backgroundColor: "#F9FAFB",
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                fontSize: 14,
+              }}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
+              Next scheduled date (YYYY-MM-DD)
+            </Text>
+            <TextInput
+              value={nextScheduledDate}
+              onChangeText={setNextScheduledDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9CA3AF"
+              style={{
+                backgroundColor: "#F9FAFB",
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                fontSize: 14,
+              }}
+            />
+          </View>
+        </View>
+
+        <View>
+          <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
+            Mileage at service
+          </Text>
+          <TextInput
+            keyboardType="numeric"
+            value={mileageAtService}
+            onChangeText={setMileageAtService}
+            placeholder="Mileage at service"
+            placeholderTextColor="#9CA3AF"
+            style={{
+              backgroundColor: "#F9FAFB",
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 8,
+              fontSize: 14,
+            }}
+          />
+        </View>
+
         <View>
           <Text style={{ fontSize: 12, color: colors.foregroundMuted }}>
             Description
@@ -187,7 +390,9 @@ export default function ServicesScreen() {
           />
         </View>
 
-        <Button onPress={handleSaveMock}>Save record (mock)</Button>
+        <Button loading={submitting} onPress={handleSave}>
+          Save record
+        </Button>
       </Card>
 
       <Card style={{ padding: 14, gap: 10 }}>
@@ -208,38 +413,36 @@ export default function ServicesScreen() {
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              {(["all", "completed", "in_progress", "waiting_parts"] as StatusFilter[]).map(
-                (value) => (
-                  <Button
-                    key={value}
-                    size="sm"
-                    variant={status === value ? "primary" : "secondary"}
-                    onPress={() => setStatus(value)}
-                  >
-                    {value === "all"
-                      ? "All"
-                      : value === "completed"
-                        ? "Completed"
-                        : value === "waiting_parts"
-                          ? "Waiting"
-                          : "In progress"}
-                  </Button>
-                ),
-              )}
+              {(
+                ["all", "SCHEDULED", "REPAIR", "EMERGENCY"] as MaintenanceFilter[]
+              ).map((value) => (
+                <Button
+                  key={value}
+                  size="sm"
+                  variant={status === value ? "primary" : "secondary"}
+                  onPress={() => setStatus(value)}
+                >
+                  {value === "all"
+                    ? "All"
+                    : value === "SCHEDULED"
+                      ? "Scheduled"
+                      : value === "REPAIR"
+                        ? "Repair"
+                        : "Emergency"}
+                </Button>
+              ))}
             </View>
           </ScrollView>
         </View>
 
         <View style={{ marginTop: 8 }}>
           {filtered.map((record) => {
-            const total = record.laborCost + record.partsCost;
-            // const high = total >= thresholds.highCost;
             const tone =
-              record.status === "completed"
-                ? "success"
-                : record.status === "waiting_parts"
+              record.maintenanceType === "SCHEDULED"
+                ? "info"
+                : record.maintenanceType === "REPAIR"
                   ? "warning"
-                  : "info";
+                  : "danger";
 
             return (
               <View
@@ -267,21 +470,23 @@ export default function ServicesScreen() {
                     >
                       {record.vehiclePlate} • {record.vehicleModel}
                     </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: colors.foregroundMuted,
-                      }}
-                    >
-                      {record.customerName}
-                    </Text>
+                    {record.customerName ? (
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          color: colors.foregroundMuted,
+                        }}
+                      >
+                        {record.customerName}
+                      </Text>
+                    ) : null}
                   </View>
                   <Badge tone={tone}>
-                    {record.status === "completed"
-                      ? "Completed"
-                      : record.status === "waiting_parts"
-                        ? "Waiting parts"
-                        : "In progress"}
+                    {record.maintenanceType === "SCHEDULED"
+                      ? "Scheduled"
+                      : record.maintenanceType === "REPAIR"
+                        ? "Repair"
+                        : "Emergency"}
                   </Badge>
                 </View>
                 <Text
@@ -297,10 +502,9 @@ export default function ServicesScreen() {
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    // color: high ? "#B45309" : colors.foreground,
                   }}
                 >
-                  {formatCurrency(total)}
+                  {formatCurrency(record.cost)}
                 </Text>
               </View>
             );
