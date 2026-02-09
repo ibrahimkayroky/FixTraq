@@ -29,4 +29,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<Vehicle> vehicles = new ArrayList<>();
 }
