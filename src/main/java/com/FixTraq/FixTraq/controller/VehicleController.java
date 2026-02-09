@@ -25,4 +25,15 @@ public class VehicleController {
         return ResponseEntity.ok(vehicleService.getAllVehicle());
     }
 
+    @GetMapping
+    public Page<VehicleResponse> getMyVehicles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        User user = authService.getCurrentUser();
+        return vehicleService.getMyVehicles(user, page, size)
+                .map(VehicleResponse::from);
+    }
+
+
 }
