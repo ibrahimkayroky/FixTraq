@@ -9,11 +9,20 @@ import java.time.LocalDate;
 @Data
 public class CreateVehicleRequest {
 
+    @NotBlank
     private String plateNumber;
+
+    @NotBlank
     private String type;
+
+    @NotBlank
     private String model;
-    private int year;
-    private int mileage;
-    private VehicleStatus status;
+
+    @Min(1960)
+    private Integer year;
+
+    @Min(0)
+    private Integer mileage;
+
     private LocalDate lastMaintenanceDate;
 }
