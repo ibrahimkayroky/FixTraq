@@ -2,21 +2,85 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { colors } from "../theme";
-import { customers, serviceRecords, vehicles } from "../data/mockData";
-import { useState } from "react";
+// import { customers, serviceRecords, vehicles } from "../data/mockData";
+import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TextInput } from "react-native";
+import { useRouter } from "expo-router";
+import { VehiclesApi } from "../src/vehicles.api";
+
+type Vehicle = {
+  id: number;
+  plate: string;
+  model: string;
+  year: number;
+  mileage: number;
+  status: "active" | "inactive" | "in_shop";
+  ownerName?: string;
+};
 
 export default function VehiclesScreen() {
+
+  const formatMileage = (m: number) => `${m.toLocaleString()} mi`;
+  
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [query, setQuery] = useState("");
+  const router = useRouter();
+  
+  const fetchVehicles = async () => {
+    try {
+      const data = await VehiclesApi.getAll();
+      const list = Array.isArray(data) ? data : [];
+
+      const normalized: Vehicle[] = list.map((v: any): Vehicle => ({
+        id: v.id,
+        plate: v.plateNumber,
+        model: v.model,
+        year: v.year,
+        mileage: v.mileage,
+        status:
+          v.status === "ACTIVE"
+            ? "active"
+            : v.status === "IN_SHOP"
+              ? "in_shop"
+              : "inactive",
+      }));
+
+      setVehicles(normalized);
+      console.log("Vehicles loaded:", normalized);
+    } catch (err) {
+      console.error("API ERROR:", err);
+    }
+  };
+
+  const createSampleVehicle = async () => {
+    try {
+      await VehiclesApi.create({
+        id: 0,
+        plateNumber: "string",
+        type: "string",
+        model: "string",
+        year: 0,
+        mileage: 0,
+        status: "ACTIVE",
+        lastMaintenanceDate: "2026-01-27",
+      });
+
+      // Refresh list after creating
+      await fetchVehicles();
+    } catch (err) {
+      console.error("CREATE VEHICLE ERROR:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchVehicles();
+  }, []);
   const filtered = vehicles.filter(
     (v) =>
       v.plate.toLowerCase().includes(query.toLowerCase()) ||
       v.model.toLowerCase().includes(query.toLowerCase()) ||
-      v.ownerName.toLowerCase().includes(query.toLowerCase()),
+      v.model.toLowerCase().includes(query.toLowerCase()),
   );
-
-  const formatMileage = (m: number) => `${m.toLocaleString()} mi`;
-
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -64,8 +128,16 @@ export default function VehiclesScreen() {
         />
       </Card>
 
+      <Button
+        variant="primary"
+        size="md"
+        onPress={() => router.push("/create-vehicle")}
+        style={{ marginTop: 8 }}
+      >
+        Create sample vehicle
+      </Button>
+
       {filtered.map((vehicle) => {
-        const owner = customers.find((c) => c.id === vehicle.ownerId);
         const statusTone =
           vehicle.status === "in_shop"
             ? ("warning" as const)
@@ -116,7 +188,6 @@ export default function VehiclesScreen() {
                 color: colors.foregroundMuted,
               }}
             >
-              Owner: {owner?.name ?? vehicle.ownerName}
             </Text>
 
             <Text

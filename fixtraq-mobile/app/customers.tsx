@@ -2,12 +2,38 @@ import { Card } from "../components/ui/Card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { colors } from "../theme";
-import { customers, vehicles } from "../data/mockData";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput } from "react-native";
+import { useRouter } from "expo-router";
+import { UsersApi } from "../src/users.api";
+
+type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+};
 
 export default function CustomersScreen() {
   const [query, setQuery] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const data = await UsersApi.getAll();
+        const list = Array.isArray(data) ? data : [];
+        setCustomers(list);
+      } catch (err) {
+        console.error("FETCH CUSTOMERS ERROR:", err);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
   const filtered = customers.filter(
     (c) =>
       c.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -63,9 +89,6 @@ export default function CustomersScreen() {
       </Card>
 
       {filtered.map((customer) => {
-        const count =
-          vehicles.filter((v) => v.ownerId === customer.id).length ||
-          customer.vehicles;
         return (
           <Card
             key={customer.id}
@@ -97,7 +120,7 @@ export default function CustomersScreen() {
                   {customer.email}
                 </Text>
               </View>
-              <Badge tone="info">{count} vehicles</Badge>
+              <Badge tone="info">{customer.role}</Badge>
             </View>
 
             <Text
@@ -140,6 +163,15 @@ export default function CustomersScreen() {
           </Text>
         </Card>
       )}
+
+      <Button
+        variant="primary"
+        size="md"
+        onPress={() => router.push("/create-customer")}
+        style={{ marginTop: 16 }}
+      >
+        Create customer
+      </Button>
     </ScrollView>
   );
 }
